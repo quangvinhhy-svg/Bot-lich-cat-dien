@@ -2,7 +2,6 @@ import os
 import requests
 from bs4 import BeautifulSoup
 
-# Danh sách điện lực cần lấy
 DIEN_LUC_CAN_TIM = [
     "Điện Lực Phù Tiên",
     "Điện Lực Thành Phố Hưng Yên",
@@ -12,22 +11,18 @@ DIEN_LUC_CAN_TIM = [
 URL_CHINH = "https://lichcupdien.org/lich-cup-dien-hung-yen"
 
 def lay_thong_tin_dien_luc(url):
-    """Truy cập bài viết và lấy thông tin chi tiết theo nhãn"""
     headers = {"User-Agent": "Mozilla/5.0"}
     res = requests.get(url, headers=headers, timeout=25)
     res.encoding = "utf-8"
     soup = BeautifulSoup(res.text, "html.parser")
 
     content = soup.find(["div","article"], class_=["entry-content","post-content"])
-    if not content:
-        content = soup.body
+    if not content: content = soup.body
 
-    lines = [l.strip() for l in content.get_text(separator="\n").split("\n") if l.strip()]
+    paras = [p.get_text(strip=True) for p in content.find_all("p") if p.get_text(strip=True)]
+    ket_qua, block = [], {}
 
-    ket_qua = []
-    block = {}
-
-    for line in lines:
+    for line in paras:
         if line.startswith("Điện lực"):
             block = {"dien_luc": line.split(":",1)[1].strip()}
         elif line.startswith("Ngày"):
@@ -40,7 +35,6 @@ def lay_thong_tin_dien_luc(url):
             block["ly_do"] = line.split(":",1)[1].strip()
         elif line.startswith("Trạng thái"):
             block["trang_thai"] = line.split(":",1)[1].strip()
-            # Khi đủ thông tin thì kiểm tra xem có nằm trong danh sách cần tìm
             if any(dl.lower() in block["dien_luc"].lower() for dl in DIEN_LUC_CAN_TIM):
                 ket_qua.append(
                     f"⚡ Điện lực: {block['dien_luc']}\n"
@@ -51,7 +45,6 @@ def lay_thong_tin_dien_luc(url):
                     f"✅ Trạng thái: {block['trang_thai']}"
                 )
             block = {}
-
     return "\n\n".join(ket_qua)
 
 def gui_thong_bao_telegram(noi_dung, tieu_de, link):
@@ -63,20 +56,27 @@ def gui_thong_bao_telegram(noi_dung, tieu_de, link):
         json={"chat_id": chat_id, "text": msg, "parse_mode": "Markdown"}
     )
 
-def bat_dau_chay():
+def lay_danh_sach_bai_viet():
     headers = {"User-Agent": "Mozilla/5.0"}
-    try:
-        response = requests.get(URL_CHINH, headers=headers, timeout=20)
-        response.encoding = "utf-8"
-        soup = BeautifulSoup(response.text, "html.parser")
+    all_posts = []
+    # Quét nhiều trang, ví dụ 10 trang đầu
+    for page in range(1, 11):
+        url = f"{URL_CHINH}?page={page}"
+        res = requests.get(url, headers=headers, timeout=20)
+        res.encoding = "utf-8"
+        soup = BeautifulSoup(res.text, "html.parser")
+        posts = soup.find_all("h3")
+        all_posts.extend(posts)
+    return all_posts
 
-        posts = soup.find_all("h3")[:3]
+def bat_dau_chay():
+    try:
+        posts = lay_danh_sach_bai_viet()
         found_data = False
 
         for post in posts:
             a_tag = post.find("a")
-            if not a_tag:
-                continue
+            if not a_tag: continue
 
             link = a_tag["href"]
             if not link.startswith("http"):
