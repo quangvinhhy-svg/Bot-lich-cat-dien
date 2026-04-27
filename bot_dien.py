@@ -64,6 +64,7 @@ def get_data():
         key = title.get_text(strip=True)
         value = content.get_text(" ", strip=True)
 
+        # bắt đầu bản ghi mới
         if "Điện lực" in key:
             if current:
                 data.append(current)
@@ -100,7 +101,6 @@ def get_data():
         item_date = parsed_date.date()
 
         if item_date == today or item_date == tomorrow:
-            # thêm flag để biết hôm nay hay mai
             item["__type"] = "today" if item_date == today else "tomorrow"
             results[matched_target].append(item)
 
@@ -131,7 +131,10 @@ def format_message(data_dict):
             continue
 
         for item in items:
-            label = "🔴 HÔM NAY" if item.get("__type") == "today" else "🟡 NGÀY MAI"
+            if item.get("__type") == "today":
+                label = f"🔴 HÔM NAY ({today_str})"
+            else:
+                label = f"🟡 NGÀY MAI ({tomorrow_str})"
 
             msg += f"{label}\n"
             msg += f"⏰ {item.get('Thời gian:', '')}\n"
