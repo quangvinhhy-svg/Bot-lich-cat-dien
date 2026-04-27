@@ -64,7 +64,6 @@ def get_data():
         key = title.get_text(strip=True)
         value = content.get_text(" ", strip=True)
 
-        # bắt đầu bản ghi mới
         if "Điện lực" in key:
             if current:
                 data.append(current)
@@ -75,7 +74,7 @@ def get_data():
     if current:
         data.append(current)
 
-    # ===== LỌC THEO NGÀY =====
+    # ===== TIME (VN) =====
     now_vn = datetime.utcnow() + timedelta(hours=7)
     today = now_vn.date()
     tomorrow = today + timedelta(days=1)
@@ -101,6 +100,8 @@ def get_data():
         item_date = parsed_date.date()
 
         if item_date == today or item_date == tomorrow:
+            # thêm flag để biết hôm nay hay mai
+            item["__type"] = "today" if item_date == today else "tomorrow"
             results[matched_target].append(item)
 
     return results
@@ -108,7 +109,16 @@ def get_data():
 
 # ===== FORMAT =====
 def format_message(data_dict):
-    msg = "⚡ <b>LỊCH CẮT ĐIỆN (HÔM NAY & NGÀY MAI)</b>\n\n"
+    now_vn = datetime.utcnow() + timedelta(hours=7)
+    today = now_vn.date()
+    tomorrow = today + timedelta(days=1)
+
+    today_str = today.strftime("%d/%m")
+    tomorrow_str = tomorrow.strftime("%d/%m")
+
+    msg = "⚡ <b>LỊCH CẮT ĐIỆN</b>\n"
+    msg += f"📅 <b>{today_str} (HÔM NAY)</b>\n"
+    msg += f"📅 <b>{tomorrow_str} (NGÀY MAI)</b>\n\n"
 
     for target in TARGETS:
         items = data_dict.get(target, [])
@@ -121,7 +131,9 @@ def format_message(data_dict):
             continue
 
         for item in items:
-            msg += f"📅 {item.get('Ngày:', '')}\n"
+            label = "🔴 HÔM NAY" if item.get("__type") == "today" else "🟡 NGÀY MAI"
+
+            msg += f"{label}\n"
             msg += f"⏰ {item.get('Thời gian:', '')}\n"
             msg += f"📍 {item.get('Khu vực:', '')}\n"
             msg += f"🛠 {item.get('Lý do:', '')}\n"
