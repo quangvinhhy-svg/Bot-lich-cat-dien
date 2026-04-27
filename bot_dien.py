@@ -59,6 +59,10 @@ def send_telegram(text):
     requests.post(send_url, json=payload)
 
 if __name__ == "__main__":
-    content = get_power_cut_data()
-    send_telegram(content)
+    # Gửi thử một tin nhắn chào hỏi trước khi chạy lấy dữ liệu
+    token = os.environ.get('TELEGRAM_TOKEN')
+    chat_id = os.environ.get('TELEGRAM_CHAT_ID')
+    requests.post(f"https://api.telegram.org/bot{token}/sendMessage", 
+                  json={"chat_id": chat_id, "text": "Chào bạn! Bot đã bắt đầu chạy thử nghiệm."})
+    get_data()
 
