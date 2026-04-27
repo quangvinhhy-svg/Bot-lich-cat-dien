@@ -59,13 +59,15 @@ def gui_thong_bao_telegram(noi_dung, tieu_de, link):
 def lay_danh_sach_bai_viet():
     headers = {"User-Agent": "Mozilla/5.0"}
     all_posts = []
-    # Quét nhiều trang, ví dụ 10 trang đầu
-    for page in range(1, 11):
+    # Quét nhiều trang, ví dụ 20 trang đầu
+    for page in range(1, 21):
         url = f"{URL_CHINH}?page={page}"
         res = requests.get(url, headers=headers, timeout=20)
         res.encoding = "utf-8"
         soup = BeautifulSoup(res.text, "html.parser")
         posts = soup.find_all("h3")
+        if not posts:  # nếu hết bài thì dừng
+            break
         all_posts.extend(posts)
     return all_posts
 
