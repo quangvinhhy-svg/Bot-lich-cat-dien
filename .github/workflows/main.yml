@@ -2,7 +2,9 @@ name: Lich Cat Dien Bot
 
 on:
   schedule:
-    - cron: '0 0 * * *' # Tự động chạy lúc 7h sáng mỗi ngày
+    - cron: "0 0 * * *"
+    - cron: "0 7 * * *"
+    - cron: "0 14 * * *" # Tự động chạy lúc 7h sáng mỗi ngày
   workflow_dispatch: # Dòng này cực kỳ quan trọng để hiện nút "Run workflow"
 
 jobs:
