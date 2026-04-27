@@ -1,7 +1,8 @@
-
 import requests
 from bs4 import BeautifulSoup
 import os
+from datetime import datetime, timedelta
+import re
 
 # ===== CONFIG =====
 URL = "https://lichcupdien.org/lich-cup-dien-hung-yen"
@@ -15,8 +16,6 @@ TARGETS = [
     "ĐIỆN LỰC THÀNH PHỐ HƯNG YÊN"
 ]
 
-
-# ===== CHECK ENV =====
 if not TELEGRAM_TOKEN or not CHAT_ID:
     raise ValueError("Thiếu TELEGRAM_TOKEN hoặc TELEGRAM_CHAT_ID")
 
@@ -33,6 +32,16 @@ def send_telegram(message):
 
     if res.status_code != 200:
         print("❌ Lỗi gửi Telegram:", res.text)
+
+
+# ===== PARSE DATE =====
+def parse_date(date_str):
+    match = re.search(r"(\d+)\s+tháng\s+(\d+)\s+năm\s+(\d+)", date_str)
+    if not match:
+        return None
+
+    day, month, year = map(int, match.groups())
+    return datetime(year, month, day)
 
 
 # ===== SCRAPE =====
@@ -55,7 +64,7 @@ def get_data():
         key = title.get_text(strip=True)
         value = content.get_text(" ", strip=True)
 
-        # bắt đầu bản ghi mới khi gặp "Điện lực"
+        # bắt đầu bản ghi mới
         if "Điện lực" in key:
             if current:
                 data.append(current)
@@ -66,29 +75,57 @@ def get_data():
     if current:
         data.append(current)
 
-    # ===== FILTER =====
-    results = []
+    # ===== LỌC THEO NGÀY =====
+    now_vn = datetime.utcnow() + timedelta(hours=7)
+    today = now_vn.date()
+    tomorrow = today + timedelta(days=1)
+
+    results = {target: [] for target in TARGETS}
+
     for item in data:
-        if any(target in item.get("Điện lực:", "") for target in TARGETS):
-            results.append(item)
+        power = item.get("Điện lực:", "")
+
+        matched_target = None
+        for target in TARGETS:
+            if target in power:
+                matched_target = target
+                break
+
+        if not matched_target:
+            continue
+
+        parsed_date = parse_date(item.get("Ngày:", ""))
+        if not parsed_date:
+            continue
+
+        item_date = parsed_date.date()
+
+        if item_date == today or item_date == tomorrow:
+            results[matched_target].append(item)
 
     return results
 
 
 # ===== FORMAT =====
-def format_message(data_list):
-    if not data_list:
-        return "❌ Không có lịch cắt điện phù hợp."
+def format_message(data_dict):
+    msg = "⚡ <b>LỊCH CẮT ĐIỆN (HÔM NAY & NGÀY MAI)</b>\n\n"
 
-    msg = "⚡ <b>LỊCH CẮT ĐIỆN HƯNG YÊN</b>\n\n"
+    for target in TARGETS:
+        items = data_dict.get(target, [])
 
-    for item in data_list:
-        msg += f"🏢 <b>{item.get('Điện lực:', '')}</b>\n"
-        msg += f"📅 {item.get('Ngày:', '')}\n"
-        msg += f"⏰ {item.get('Thời gian:', '')}\n"
-        msg += f"📍 {item.get('Khu vực:', '')}\n"
-        msg += f"🛠 {item.get('Lý do:', '')}\n"
-        msg += "----------------------\n"
+        msg += f"🏢 <b>{target}</b>\n"
+
+        if not items:
+            msg += "❌ Không có lịch cắt điện.\n"
+            msg += "----------------------\n"
+            continue
+
+        for item in items:
+            msg += f"📅 {item.get('Ngày:', '')}\n"
+            msg += f"⏰ {item.get('Thời gian:', '')}\n"
+            msg += f"📍 {item.get('Khu vực:', '')}\n"
+            msg += f"🛠 {item.get('Lý do:', '')}\n"
+            msg += "----------------------\n"
 
     return msg
 
@@ -98,11 +135,11 @@ def main():
     print("🚀 Đang chạy bot...")
 
     data = get_data()
-    print(f"✅ Lấy được {len(data)} bản ghi")
+    print("✅ Đã lấy dữ liệu")
 
     message = format_message(data)
-    send_telegram(message)
 
+    send_telegram(message)
     print("✅ Đã gửi Telegram")
 
 
