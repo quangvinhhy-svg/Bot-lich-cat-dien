@@ -5,53 +5,62 @@ from bs4 import BeautifulSoup
 def bat_dau_chay():
     token = os.environ.get('TELEGRAM_TOKEN')
     chat_id = os.environ.get('TELEGRAM_CHAT_ID')
-    url = 'https://lichcupdien.org/lich-cup-dien-hung-yen'
+    url_chinh = 'https://lichcupdien.org/lich-cup-dien-hung-yen'
     
-    # Giả lập trình duyệt để không bị trang web chặn
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-    }
-    
-    # Danh sách từ khóa ngắn gọn để tăng tỉ lệ tìm thấy
-    khu_vuc = ["hưng yên", "tiên lữ", "kim động"]
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+    khu_vuc_loc = ["hưng yên", "tiên lữ", "kim động"]
     
     try:
-        response = requests.get(url, headers=headers, timeout=20)
+        # 1. Lấy danh sách các bài thông báo mới nhất
+        response = requests.get(url_chinh, headers=headers, timeout=20)
         response.encoding = 'utf-8'
         soup = BeautifulSoup(response.text, 'html.parser')
-        
-        # Tìm tất cả các tiêu đề bản tin (thường nằm trong thẻ h3 hoặc class list-item)
-        items = soup.find_all(['div', 'article'], class_=['list-item', 'post-item']) 
-        if not items:
-            # Nếu không tìm thấy class, thử tìm theo tất cả các thẻ h3
-            items = soup.find_all('h3')
+        items = soup.find_all(['div', 'article'], class_=['list-item', 'post-item']) or soup.find_all('h3')
 
-        ket_qua = []
-        for item in items:
+        thong_bao_tong_hop = []
+
+        for item in items[:3]: # Lấy tối đa 3 thông báo mới nhất để tránh tin nhắn quá dài
             title_tag = item.find('h3') if item.name != 'h3' else item
-            if title_tag:
-                title = title_tag.text.strip()
-                # Tìm link: nếu item không phải h3 thì tìm thẻ a bên trong, nếu là h3 thì tìm thẻ a chứa nó
-                link_tag = item.find('a') if item.name != 'h3' else item.find_parent('a') or item.find('a')
-                link = link_tag['href'] if link_tag else url
-                
-                # Kiểm tra khu vực (không phân biệt hoa thường)
-                if any(kv in title.lower() for kv in khu_vuc):
-                    ket_qua.append(f"📍 {title}\n🔗 Chi tiết: {link}")
+            if not title_tag: continue
             
-            if len(ket_qua) >= 5: break
+            title_text = title_tag.text.strip()
+            link_tag = item.find('a') if item.name != 'h3' else item.find_parent('a') or item.find('a')
+            
+            # Kiểm tra xem có thuộc khu vực quan tâm không
+            if any(kv in title_text.lower() for kv in khu_vuc_loc) and link_tag:
+                link_chi_tiet = link_tag['href']
+                
+                # 2. Truy cập vào link chi tiết để lấy nội dung bên trong
+                res_detail = requests.get(link_chi_tiet, headers=headers, timeout=20)
+                res_detail.encoding = 'utf-8'
+                soup_detail = BeautifulSoup(res_detail.text, 'html.parser')
+                
+                # Tìm bảng hoặc khu vực chứa thông tin chi tiết
+                content = soup_detail.find('div', class_='entry-content') or soup_detail.find('article')
+                
+                info_text = ""
+                if content:
+                    # Lấy các dòng thông tin như: Thời gian, Khu vực, Lý do
+                    lines = content.find_all(['p', 'li'])
+                    for line in lines:
+                        txt = line.text.strip()
+                        if any(key in txt for key in ["Thời gian:", "Khu vực:", "Lý do:", "Ngày:"]):
+                            info_text += f"🔹 {txt}\n"
+                
+                detail_msg = f"📌 *{title_text}*\n{info_text if info_text else '⚠️ Không trích xuất được chi tiết, vui lòng xem link.'}\n🔗 [Xem chi tiết tại đây]({link_chi_tiet})"
+                thong_bao_tong_hop.append(detail_msg)
 
-        if not ket_qua:
-            msg = "✅ Hiện tại không có lịch cắt điện mới được đăng cho TP. Hưng Yên, Tiên Lữ, Kim Động trên trang chủ."
+        # 3. Gửi tin nhắn
+        if thong_bao_tong_hop:
+            final_msg = "⚡️ *CHI TIẾT LỊCH CẮT ĐIỆN HƯNG YÊN* ⚡️\n\n" + "\n\n---\n\n".join(thong_bao_tong_hop)
+            requests.post(f"https://api.telegram.org/bot{token}/sendMessage", 
+                          json={"chat_id": chat_id, "text": final_msg, "parse_mode": "Markdown", "disable_web_page_preview": True})
         else:
-            msg = "⚡️ THÔNG BÁO LỊCH CẮT ĐIỆN ⚡️\n\n" + "\n------------------------\n".join(ket_qua)
-        
-        requests.post(f"https://api.telegram.org/bot{token}/sendMessage", 
-                      json={"chat_id": chat_id, "text": msg, "disable_web_page_preview": True})
+            requests.post(f"https://api.telegram.org/bot{token}/sendMessage", 
+                          json={"chat_id": chat_id, "text": "✅ Hiện tại không có lịch cắt điện mới chi tiết cho khu vực của bạn."})
 
     except Exception as e:
-        requests.post(f"https://api.telegram.org/bot{token}/sendMessage", 
-                      json={"chat_id": chat_id, "text": f"❌ Lỗi kỹ thuật: {str(e)}"})
+        print(f"Lỗi: {e}")
 
 if __name__ == "__main__":
     bat_dau_chay()
