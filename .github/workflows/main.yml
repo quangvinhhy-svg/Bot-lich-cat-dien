@@ -2,26 +2,26 @@ name: Lich Cat Dien Bot
 
 on:
   schedule:
-    - cron: "0 0 * * *"
-    - cron: "0 7 * * *"
-    - cron: "0 14 * * *" # Tự động chạy lúc 7h sáng mỗi ngày
-  workflow_dispatch: # Dòng này cực kỳ quan trọng để hiện nút "Run workflow"
+    - cron: "0 0 * * *"    # 07:00 VN
+    - cron: "0 7 * * *"    # 14:00 VN
+    - cron: "0 14 * * *"   # 21:00 VN
+  workflow_dispatch:
 
 jobs:
-  build:
+  run-bot:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Python
+      - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: "3.10"
 
       - name: Install dependencies
-        run: |
-          pip install requests beautifulsoup4
+        run: pip install -r requirements.txt
 
       - name: Run bot
         env:
