@@ -1,4 +1,3 @@
-Python
 import os  # Dòng này cực kỳ quan trọng, phải có nó mới chạy được
 import requests
 from bs4 import BeautifulSoup
@@ -62,3 +61,4 @@ def send_telegram(text):
 if __name__ == "__main__":
     content = get_power_cut_data()
     send_telegram(content)
+
