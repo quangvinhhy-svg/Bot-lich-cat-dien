@@ -16,7 +16,7 @@ def get_power_cut_data():
     
     try:
         response = requests.get(URL, headers=headers)
-        response.encoding = 'utf-8' 
+        response.encoding = 'utf-8'  
         soup = BeautifulSoup(response.text, 'html.parser')
         
         items = soup.find_all('div', class_='list-item')
