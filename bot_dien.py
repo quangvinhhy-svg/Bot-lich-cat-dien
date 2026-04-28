@@ -148,12 +148,7 @@ def format_message(data_dict):
 # ===== MAIN =====
 def main():
     print("🚀 Đang chạy bot...")
-# ===== CHỈ GỬI MỖI 1 TIẾNG =====
-    now_vn = datetime.utcnow() + timedelta(hours=7)
 
-    if now_vn.minute not in [0, 1, 2]:
-        print("⏭️ Skip")
-        return
     data = get_data()
     print("✅ Đã lấy dữ liệu")
 
@@ -165,3 +160,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
