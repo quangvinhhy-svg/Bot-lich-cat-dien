@@ -13,7 +13,7 @@ CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 TARGETS = [
     "ĐIỆN LỰC PHÙ TIÊN",
     "ĐIỆN LỰC KIM ĐỘNG",
-    "ĐIỆN LỰC THÀNH PHỐ HƯNG YÊN"
+    "ĐIỆN LỰC PHỐ HIẾN"
 ]
 
 if not TELEGRAM_TOKEN or not CHAT_ID:
